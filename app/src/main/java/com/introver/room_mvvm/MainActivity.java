@@ -24,6 +24,7 @@ import java.util.List;
 public class MainActivity extends AppCompatActivity {
     private NoteViewModel noteViewModel;
     public static final int ADD_NOTE_REQUEST = 1;
+    public static final int EDIT_NOTE_REQUEST = 2;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -33,7 +34,7 @@ public class MainActivity extends AppCompatActivity {
         floatingActionButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent intent = new Intent(MainActivity.this, AddNoteActivity.class);
+                Intent intent = new Intent(MainActivity.this, AddEditNoteActivity.class);
                 startActivityForResult(intent, ADD_NOTE_REQUEST);
             }
         });
@@ -49,7 +50,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onChanged(List<Note> notes) {
                 Toast.makeText(MainActivity.this, "First MVVM Room app", Toast.LENGTH_LONG).show();
-                adapter.setNotes(notes);
+                adapter.submitList(notes);
             }
         });
 
@@ -70,6 +71,18 @@ public class MainActivity extends AppCompatActivity {
 
             }
         }).attachToRecyclerView(recyclerView);
+        adapter.setOnItemClickListener(new NoteAdapter.onItemClickListener() {
+            @Override
+            public void onItemClick(Note note) {
+                Intent intent = new Intent(MainActivity.this, AddEditNoteActivity.class);
+                intent.putExtra(AddEditNoteActivity.EXTRA_ID, note.getId());
+                intent.putExtra(AddEditNoteActivity.EXTRA_TITLE, note.getTitle());
+                intent.putExtra(AddEditNoteActivity.EXTRA_DESCRIPTION, note.getDescription());
+                intent.putExtra(AddEditNoteActivity.EXTRA_PRIORITY, note.getPriority());
+                startActivityForResult(intent, EDIT_NOTE_REQUEST);
+
+            }
+        });
 
     }
 
@@ -78,12 +91,28 @@ public class MainActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
 
         if (requestCode == ADD_NOTE_REQUEST && resultCode == RESULT_OK) {
-            String title = data.getStringExtra(AddNoteActivity.EXTRA_TITLE);
-            String description = data.getStringExtra(AddNoteActivity.EXTRA_DESCRIPTION);
-            int priority = data.getIntExtra(AddNoteActivity.EXTRA_PRIORITY, 1);
+            String title = data.getStringExtra(AddEditNoteActivity.EXTRA_TITLE);
+            String description = data.getStringExtra(AddEditNoteActivity.EXTRA_DESCRIPTION);
+            int priority = data.getIntExtra(AddEditNoteActivity.EXTRA_PRIORITY, 1);
             Note note = new Note(title, description, priority);
             noteViewModel.insert(note);
             Toast.makeText(MainActivity.this, "Note saved", Toast.LENGTH_LONG).show();
+        } else if (requestCode == EDIT_NOTE_REQUEST && resultCode == RESULT_OK) {
+            int id = data.getIntExtra(AddEditNoteActivity.EXTRA_ID, -1);
+            if (id == -1) {
+                Toast.makeText(MainActivity.this, "Note not updated", Toast.LENGTH_LONG).show();
+
+            } else {
+                String title = data.getStringExtra(AddEditNoteActivity.EXTRA_TITLE);
+                String description = data.getStringExtra(AddEditNoteActivity.EXTRA_DESCRIPTION);
+                int priority = data.getIntExtra(AddEditNoteActivity.EXTRA_PRIORITY, 1);
+                Note note = new Note(title, description, priority);
+                note.setId(id);
+                noteViewModel.update(note);
+                Toast.makeText(MainActivity.this, "Note updated", Toast.LENGTH_LONG).show();
+
+
+            }
         } else {
             Toast.makeText(MainActivity.this, "Note not saved", Toast.LENGTH_LONG).show();
 
@@ -96,6 +125,7 @@ public class MainActivity extends AppCompatActivity {
         menuInflater.inflate(R.menu.main_menu, menu);
         return true;
     }
+
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
